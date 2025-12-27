@@ -16,6 +16,7 @@ import AuthScreen from './src/screens/AuthScreen';
 import CreateEvent from './src/screens/CreateEvent';
 import EventDetail from './src/screens/EventDetail';
 import MyEventsScreen from './src/screens/MyEventsScreen';
+import ParticipatingEventsScreen from './src/screens/ParticipatingEventsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import RemindersScreen from './src/screens/RemindersScreen';
 import UserFeed from './src/screens/UserFeed';

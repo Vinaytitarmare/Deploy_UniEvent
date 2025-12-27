@@ -34,7 +34,7 @@
       "startUrl": "/",
       "display": "standalone",
       "backgroundColor": "#ffffff",
-      "themeColor": "#6200ee",
+      "themeColor": "#ffffff",
       "description": "Centralized Event Platform for university clubs and events.",
       "orientation": "portrait",
       "dir": "ltr",
