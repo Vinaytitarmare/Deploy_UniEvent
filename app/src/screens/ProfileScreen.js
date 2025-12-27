@@ -7,7 +7,6 @@ import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Switch, Tex
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebaseConfig';
-import { cancelAllNotifications, testNotification } from '../lib/notificationService';
 import { useTheme } from '../lib/ThemeContext';
 
 // Helper for menu items
@@ -173,26 +172,7 @@ export default function ProfileScreen({ navigation }) {
             <MenuItem 
                 icon="heart-outline" 
                 label="Events I'm Going To" 
-                onPress={() => Alert.alert("Coming Soon", "You can check specific events for now.")} 
-                theme={theme}
-                styles={styles}
-            />
-             <MenuItem 
-                icon="notifications-outline" 
-                label="Test Device Notification" 
-                onPress={() => testNotification().then(() => Alert.alert("Sent", "Check your system tray!"))} 
-                theme={theme}
-                styles={styles}
-            />
-             <MenuItem 
-                icon="trash-outline" 
-                label="Clear All Notifications (Debug)" 
-                onPress={() => {
-                    Alert.alert("Confirm", "Clear all pending notifications?", [
-                        { text: "Cancel", style: "cancel" },
-                        { text: "Clear", style: 'destructive', onPress: () => cancelAllNotifications().then(() => Alert.alert("Cleared", "All scheduled notifications removed.")) }
-                    ]);
-                }} 
+                onPress={() => navigation.navigate('ParticipatingEvents')} 
                 theme={theme}
                 styles={styles}
             />

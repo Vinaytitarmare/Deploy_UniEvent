@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useContext, useEffect, useState } from 'react';
-import { useColorScheme } from 'react-native';
+import { Platform, useColorScheme } from 'react-native';
 import { darkTheme, lightTheme } from './theme';
 
 const ThemeContext = createContext();
@@ -17,6 +17,12 @@ export const ThemeProvider = ({ children }) => {
 
   useEffect(() => {
     setTheme(isDarkMode ? darkTheme : lightTheme);
+    if (Platform.OS === 'web') {
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) {
+            meta.setAttribute('content', isDarkMode ? '#000000' : '#ffffff');
+        }
+    }
   }, [isDarkMode]);
 
   const loadThemePreference = async () => {

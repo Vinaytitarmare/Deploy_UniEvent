@@ -1,6 +1,7 @@
 import { makeRedirectUri, Prompt, ResponseType, useAuthRequest } from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
-import { Platform } from 'react-native';
+import { useEffect } from 'react';
+import { Alert, Platform } from 'react-native';
 
 // Use the same Client ID as AuthScreen to ensure consistent Redirect URI configuration
 const CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '447974687688-qeiu17sp40o16nkupfen6cqcd4gomnov.apps.googleusercontent.com';

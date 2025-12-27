@@ -100,7 +100,8 @@ const setItemAsync = async (key, value) => {
               password, // Storing password securely
               displayName: user.displayName || 'User',
               photoURL: user.photoURL,
-              uid: user.uid
+              uid: user.uid,
+              provider: 'password'
           };
 
           if (existingIndex >= 0) {
@@ -116,6 +117,35 @@ const setItemAsync = async (key, value) => {
       }
   };
 
+  const saveGoogleAccountCredentials = async (user) => {
+    try {
+        let currentAccounts = [];
+        const json = await getItemAsync('saved_accounts');
+        if (json) currentAccounts = JSON.parse(json);
+
+        const existingIndex = currentAccounts.findIndex(a => a.email === user.email);
+        const newAccount = {
+            email: user.email,
+            password: null, // No password for Google
+            displayName: user.displayName || 'User',
+            photoURL: user.photoURL,
+            uid: user.uid,
+            provider: 'google'
+        };
+
+        if (existingIndex >= 0) {
+            currentAccounts[existingIndex] = newAccount;
+        } else {
+            currentAccounts.push(newAccount);
+        }
+
+        await setItemAsync('saved_accounts', JSON.stringify(currentAccounts));
+        setSavedAccounts(currentAccounts);
+    } catch (e) {
+        console.log("Failed to save google account", e);
+    }
+  };
+
   const switchAccount = async (targetEmail) => {
       // Use a separate flag for switching to prevent "flash" of Auth screen
       // We will handle this in the UI by keeping the current screen or showing a loader
@@ -123,9 +153,20 @@ const setItemAsync = async (key, value) => {
       
       try {
           const account = savedAccounts.find(a => a.email === targetEmail);
-          if (!account || !account.password) throw new Error("Account credentials not found");
+          if (!account) throw new Error("Account not found");
           
           await firebaseSignOut(auth);
+
+          if (account.provider === 'google' || !account.password) {
+              // Cannot auto-login Google accounts without prompting. 
+              // For MVP, we just sign out and let them click "Continue with Google" again on AuthScreen.
+              // Ideally, we'd trigger the prompt here, but we need the hook.
+              // Pass a param? No.
+              // Just return, user is now signed out.
+              // App will go to AuthScreen.
+              return; 
+          }
+
           await signInWithEmailAndPassword(auth, account.email, account.password);
           // Don't need to manually set user, onAuthStateChanged in useEffect will handle it
       } catch (e) {
@@ -174,7 +215,7 @@ const setItemAsync = async (key, value) => {
     <AuthContext.Provider value={{ 
         user, userData, role, loading, 
         signIn, signUp, signOut,
-        savedAccounts, switchAccount, removeSavedAccount 
+        savedAccounts, switchAccount, removeSavedAccount, saveGoogleAccountCredentials 
     }}>
       {children}
     </AuthContext.Provider>

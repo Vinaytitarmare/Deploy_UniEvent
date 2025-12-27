@@ -8,7 +8,8 @@ import { makeRedirectUri } from 'expo-auth-session';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
-import { auth } from '../lib/firebaseConfig'; // Direct auth import for credential sign-in
+import { doc, getDoc, setDoc } from 'firebase/firestore'; // Firestore imports
+import { auth, db } from '../lib/firebaseConfig'; // db import
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -20,7 +21,7 @@ export default function AuthScreen() {
   const [name, setName] = useState(''); // For signup
   const [loading, setLoading] = useState(false);
   
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, saveGoogleAccountCredentials } = useAuth();
 
   // Google Auth Setup
   const [request, response, promptAsync] = Google.useAuthRequest({
@@ -65,7 +66,25 @@ export default function AuthScreen() {
       const credential = GoogleAuthProvider.credential(id_token || null, accessToken || null);
       setLoading(true);
       signInWithCredential(auth, credential)
-        .then(() => {
+        .then(async (userCredential) => {
+            const user = userCredential.user;
+            saveGoogleAccountCredentials(user);
+            
+            // Ensure Firestore Document Exists
+            const userDocRef = doc(db, 'users', user.uid);
+            const userDoc = await getDoc(userDocRef);
+            
+            if (!userDoc.exists()) {
+                await setDoc(userDocRef, {
+                    email: user.email,
+                    displayName: user.displayName,
+                    role: 'student', // Default role
+                    createdAt: new Date().toISOString(),
+                    photoURL: user.photoURL,
+                    provider: 'google'
+                });
+            }
+            
             // success, AuthContext will handle state change
         })
         .catch((error) => {

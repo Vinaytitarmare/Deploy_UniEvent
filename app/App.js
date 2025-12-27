@@ -189,6 +189,7 @@ function Navigation() {
             <Stack.Screen name="Main" component={TabNavigator} options={{ headerShown: false }} />
             <Stack.Screen name="CreateEvent" component={CreateEvent} options={{ title: 'Create New Event' }} />
             <Stack.Screen name="EventDetail" component={EventDetail} options={{ title: 'Event Details' }} />
+            <Stack.Screen name="ParticipatingEvents" component={ParticipatingEventsScreen} options={{ title: 'Events I\'m Going To' }} />
             {/* MyEvents is now a Tab, but can still be navigated to if needed, though usually via tab */}
             <Stack.Screen name="EventAnalytics" component={EventAnalytics} options={{ title: 'Analytics' }} />
           </>
@@ -206,12 +207,15 @@ import { useRef } from 'react';
 import { db } from './src/lib/firebaseConfig';
 import { registerForPushNotificationsAsync } from './src/lib/notificationService';
 
+import PWAInstallPrompt from './src/components/PWAInstallPrompt';
+
 export default function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
         <AuthProvider>
             <AppContent />
+            <PWAInstallPrompt />
         </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>
