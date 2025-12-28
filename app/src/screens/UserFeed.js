@@ -11,8 +11,6 @@ import { db } from '../lib/firebaseConfig';
 import { useTheme } from '../lib/ThemeContext';
 
 const FILTERS = ['Upcoming', 'Past', 'Cultural', 'Sports', 'Tech', 'Workshop', 'Seminar'];
-const CARD_MIN_WIDTH = 350;
-const CARD_GAP = 16;
 
 export default function UserFeed({ navigation, headerContent }) {
     const { user, userData, role } = useAuth();
@@ -259,7 +257,7 @@ export default function UserFeed({ navigation, headerContent }) {
                         [{ nativeEvent: { contentOffset: { y: scrollY } } }],
                         { useNativeDriver: true }
                     )}
-                    contentContainerStyle={{ paddingBottom: 100, paddingHorizontal: 16 }}
+                    contentContainerStyle={{ paddingBottom: 100 }}
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <Ionicons name="search-outline" size={64} color={theme.colors.textSecondary} style={{ opacity: 0.5 }} />
