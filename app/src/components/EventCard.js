@@ -124,11 +124,13 @@ export default function EventCard({ event, onLike, onShare, isLiked = false, isR
 
 const styles = StyleSheet.create({
     card: {
-        borderRadius: 10, // Squared off for full width look or minimal radius
+        borderRadius: 10,
         marginBottom: 24,
         overflow: 'visible',
-        marginHorizontal: 0, // Full width - removed reference to potential parent padding if any
+        marginHorizontal: 0,
         width: '100%',
+        maxWidth: 500, // Limit width on desktop
+        alignSelf: 'center', // Center the card on wide screens
     },
     bannerContainer: {
         height: 180, // Even Taller banner for impact

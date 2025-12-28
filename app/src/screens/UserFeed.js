@@ -11,6 +11,8 @@ import { db } from '../lib/firebaseConfig';
 import { useTheme } from '../lib/ThemeContext';
 
 const FILTERS = ['Upcoming', 'Past', 'Cultural', 'Sports', 'Tech', 'Workshop', 'Seminar'];
+const CARD_MIN_WIDTH = 350;
+const CARD_GAP = 16;
 
 export default function UserFeed({ navigation, headerContent }) {
     const { user, userData, role } = useAuth();
@@ -198,21 +200,30 @@ export default function UserFeed({ navigation, headerContent }) {
         </View>
     );
 
-    const renderEvent = ({ item }) => (
-        <EventCard
-            event={item}
-            isRegistered={participatingIds.includes(item.id)}
-            onLike={() => { }}
-            onShare={async () => {
-                try {
-                    await Share.share({
-                        message: `Check out this event: ${item.title} at ${item.location}!`,
-                    });
-                } catch (e) { console.log(e); }
-            }}
-            onPress={() => navigation.navigate('EventDetail', { eventId: item.id })}
-        />
-    );
+    const renderEvent = ({ item }) => {
+        // Calculate width based on screen size for grid layout
+        const screenWidth = Dimensions.get('window').width;
+        const numColumns = Math.max(1, Math.floor((screenWidth - 32) / CARD_MIN_WIDTH));
+        const cardWidth = numColumns > 1 ? `${(100 / numColumns) - 2}%` : '100%';
+        
+        return (
+            <View style={{ width: cardWidth, paddingHorizontal: numColumns > 1 ? 8 : 0 }}>
+                <EventCard
+                    event={item}
+                    isRegistered={participatingIds.includes(item.id)}
+                    onLike={() => { }}
+                    onShare={async () => {
+                        try {
+                            await Share.share({
+                                message: `Check out this event: ${item.title} at ${item.location}!`,
+                            });
+                        } catch (e) { console.log(e); }
+                    }}
+                    onPress={() => navigation.navigate('EventDetail', { eventId: item.id })}
+                />
+            </View>
+        );
+    };
 
     const headerTranslateY = scrollY.interpolate({
         inputRange: [0, 100],
@@ -257,7 +268,13 @@ export default function UserFeed({ navigation, headerContent }) {
                         [{ nativeEvent: { contentOffset: { y: scrollY } } }],
                         { useNativeDriver: true }
                     )}
-                    contentContainerStyle={{ paddingBottom: 100 }}
+                    contentContainerStyle={{ 
+                        paddingBottom: 100, 
+                        paddingHorizontal: 16,
+                        ...Platform.select({
+                            web: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' }
+                        })
+                    }}
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <Ionicons name="search-outline" size={64} color={theme.colors.textSecondary} style={{ opacity: 0.5 }} />
