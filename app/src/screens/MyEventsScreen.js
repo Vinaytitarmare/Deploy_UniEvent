@@ -137,8 +137,10 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 10,
-        marginBottom: 20,
-        marginTop: -15, // Pull up closer to card
+        paddingVertical: 10,
+        marginBottom: 15,
+        backgroundColor: 'rgba(0,0,0,0.02)',
+        borderRadius: 8,
     },
     status: {
         fontSize: 14,

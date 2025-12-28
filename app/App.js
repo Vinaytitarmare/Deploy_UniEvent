@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -12,12 +11,14 @@ import ScreenWrapper from './src/components/ScreenWrapper';
 import { AuthProvider, useAuth } from './src/lib/AuthContext';
 import { ThemeProvider, useTheme } from './src/lib/ThemeContext';
 import AdminDashboard from './src/screens/AdminDashboard';
+import AttendanceDashboard from './src/screens/AttendanceDashboard';
 import AuthScreen from './src/screens/AuthScreen';
 import CreateEvent from './src/screens/CreateEvent';
 import EventDetail from './src/screens/EventDetail';
 import MyEventsScreen from './src/screens/MyEventsScreen';
 import ParticipatingEventsScreen from './src/screens/ParticipatingEventsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import QRScannerScreen from './src/screens/QRScannerScreen';
 import RemindersScreen from './src/screens/RemindersScreen';
 import UserFeed from './src/screens/UserFeed';
 
@@ -77,45 +78,28 @@ function HomeScreen({ navigation }) {
 
 import EventAnalytics from './src/screens/EventAnalytics';
 
+import CustomTabBar from './src/components/CustomTabBar';
+import LeaderboardScreen from './src/screens/LeaderboardScreen';
+
 function TabNavigator() {
     const { role } = useAuth();
     const { theme } = useTheme();
     
     return (
         <Tab.Navigator
-            screenOptions={({ route }) => ({
+            tabBar={(props) => <CustomTabBar {...props} />}
+            screenOptions={{
                 headerShown: false,
-                tabBarActiveTintColor: theme.colors.primary,
-                tabBarInactiveTintColor: theme.colors.textSecondary,
                 tabBarStyle: {
-                    borderTopWidth: 1,
-                    borderTopColor: theme.colors.border,
-                    backgroundColor: theme.colors.surface,
-                    height: 60,
-                    paddingBottom: 5,
-                    paddingTop: 5,
-                },
-                tabBarIcon: ({ focused, color, size }) => {
-                    let iconName;
-
-                    if (route.name === 'HomeTab') {
-                        iconName = focused ? 'home' : 'home-outline';
-                    } else if (route.name === 'ProfileTab') {
-                        iconName = focused ? 'person' : 'person-outline';
-                    } else if (route.name === 'AdminTab') {
-                        iconName = focused ? 'settings' : 'settings-outline';
-                    } else if (route.name === 'RemindersTab') {
-                        iconName = focused ? 'alarm' : 'alarm-outline';
-                    } else if (route.name === 'MyEventsTab') {
-                        iconName = focused ? 'calendar' : 'calendar-outline';
-                    }
-
-                    return <Ionicons name={iconName} size={size} color={color} />;
-                },
-            })}
+                   position: 'absolute', // Required for BlurView transparency to see content behind
+                   backgroundColor: 'transparent',
+                   elevation: 0,
+                   borderTopWidth: 0,
+                }
+            }}
         >
             <Tab.Screen 
-                name="HomeTab" 
+                name="Home" 
                 component={HomeScreen} 
                 options={{ title: 'Home' }} 
             />
@@ -123,7 +107,7 @@ function TabNavigator() {
             {/* Admin Tab: Control Panel (Admin Only) */}
             {role === 'admin' && (
                 <Tab.Screen 
-                    name="AdminTab" 
+                    name="Admin" 
                     component={AdminDashboard} 
                     options={{ title: 'Control' }} 
                 />
@@ -132,20 +116,27 @@ function TabNavigator() {
             {/* My Events Tab: For Admin & Club */}
             {(role === 'admin' || role === 'club') && (
                 <Tab.Screen 
-                    name="MyEventsTab" 
+                    name="MyEvents" 
                     component={MyEventsScreen} 
                     options={{ title: 'My Events' }} 
                 />
             )}
 
             <Tab.Screen 
-                name="RemindersTab" 
+                name="Reminders" 
                 component={RemindersScreen} 
                 options={{ title: 'Reminders' }} 
             />
+
+            {/* Leaderboard for everyone or students */}
+            <Tab.Screen 
+                 name="Leaderboard" 
+                 component={LeaderboardScreen} 
+                 options={{ title: 'Rankings' }} 
+            />
             
             <Tab.Screen 
-                name="ProfileTab" 
+                name="Profile" 
                 component={ProfileScreen} 
                 options={{ title: 'Profile' }} 
             />
@@ -193,6 +184,8 @@ function Navigation() {
             <Stack.Screen name="ParticipatingEvents" component={ParticipatingEventsScreen} options={{ title: 'Events I\'m Going To' }} />
             {/* MyEvents is now a Tab, but can still be navigated to if needed, though usually via tab */}
             <Stack.Screen name="EventAnalytics" component={EventAnalytics} options={{ title: 'Analytics' }} />
+            <Stack.Screen name="AttendanceDashboard" component={AttendanceDashboard} options={{ title: 'Attendance', headerShown: false }} />
+            <Stack.Screen name="QRScanner" component={QRScannerScreen} options={{ title: 'Scan QR', headerShown: false }} />
           </>
         ) : (
           <Stack.Screen name="Auth" component={AuthScreen} options={{ headerShown: false }} />

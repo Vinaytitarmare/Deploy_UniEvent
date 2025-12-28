@@ -12,7 +12,7 @@ A full-stack, hackathon-ready event platform built with Expo (React Native + Web
 -   **Gamification**: Club reputation system.
 
 ## Setup Instructions
-
+ 
 1.  **Clone the repository**.
 2.  **Install dependencies**:
     ```bash
@@ -57,3 +57,4 @@ A full-stack, hackathon-ready event platform built with Expo (React Native + Web
 -   [Project Summary](./docs/Centralized_Event_Platform_Summary.md)
 -   [Pitch Deck](./docs/Pitch_Deck.md)
 -   [Architecture](./docs/Architecture.md)
+npm run web -- --port 19006

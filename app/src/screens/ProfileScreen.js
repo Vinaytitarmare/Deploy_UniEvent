@@ -28,6 +28,7 @@ export default function ProfileScreen({ navigation }) {
   const [name, setName] = useState(user?.displayName || '');
   const [year, setYear] = useState('1');
   const [branch, setBranch] = useState('CSE');
+  const [points, setPoints] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -43,6 +44,7 @@ export default function ProfileScreen({ navigation }) {
             if (data.year) setYear(String(data.year)); 
             if (data.displayName) setName(data.displayName);
             if (data.branch) setBranch(data.branch);
+            if (data.points) setPoints(data.points);
         }
     } catch (e) {
         console.error(e);
@@ -91,6 +93,10 @@ export default function ProfileScreen({ navigation }) {
                         <Text style={styles.badgeText}>
                             {year ? `Year ${year} • ` : ''}{role === 'admin' ? 'ADMIN' : (branch || 'Student')}
                         </Text>
+                    </View>
+                    <View style={{flexDirection: 'row', alignItems: 'center', marginTop: 5, gap: 5}}>
+                        <Ionicons name="trophy" size={16} color="#FFD700" />
+                        <Text style={{fontWeight: 'bold', color: theme.colors.text}}>{points} Rep Points</Text>
                     </View>
                     <TouchableOpacity style={styles.editButton} onPress={() => setIsEditing(true)}>
                         <Ionicons name="create-outline" size={20} color={theme.colors.primary} />
@@ -165,7 +171,7 @@ export default function ProfileScreen({ navigation }) {
             <MenuItem 
                 icon="calendar-outline" 
                 label="My Created Events" 
-                onPress={() => navigation.navigate('Main', { screen: 'MyEventsTab' })} 
+                onPress={() => navigation.navigate('MyEvents')} 
                 theme={theme}
                 styles={styles}
             />

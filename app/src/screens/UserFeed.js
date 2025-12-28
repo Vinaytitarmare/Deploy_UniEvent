@@ -1,232 +1,342 @@
-import { collection, onSnapshot, query } from 'firebase/firestore';
+import { Ionicons } from '@expo/vector-icons';
+import { collection, limit, onSnapshot, query, where } from 'firebase/firestore';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Platform, ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import EventCard from '../components/EventCard';
+import FeedbackModal from '../components/FeedbackModal';
+import { EventListSkeleton } from '../components/SkeletonLoader';
 import { useAuth } from '../lib/AuthContext';
+import { submitFeedback } from '../lib/feedbackService'; // Ensure this exists or mock it
 import { db } from '../lib/firebaseConfig';
 import { useTheme } from '../lib/ThemeContext';
 
 const FILTERS = ['Upcoming', 'Past', 'Cultural', 'Sports', 'Tech', 'Workshop', 'Seminar'];
 
 export default function UserFeed({ navigation, headerContent }) {
-  const { user, userData, role } = useAuth();
-  const { theme } = useTheme();
-  const [events, setEvents] = useState([]);
-  const [participatingIds, setParticipatingIds] = useState([]); // Track joined events
-  const [activeFilter, setActiveFilter] = useState('Upcoming');
-  const [loading, setLoading] = useState(true);
-  
-  const scrollY = useRef(new Animated.Value(0)).current;
+    const { user, userData, role } = useAuth();
+    const { theme } = useTheme();
+    const [events, setEvents] = useState([]);
+    const [participatingIds, setParticipatingIds] = useState([]); // Track joined events
+    const [activeFilter, setActiveFilter] = useState('Upcoming');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [loading, setLoading] = useState(true);
 
-  // Listen for my registrations
-  useEffect(() => {
-      if (!user) return;
-      const q = collection(db, 'users', user.uid, 'participating');
-      const unsub = onSnapshot(q, (snap) => {
-          setParticipatingIds(snap.docs.map(d => d.id));
-      });
-      return unsub;
-  }, [user]);
+    // Feedback Modal State
+    const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+    const [currentFeedbackRequest, setCurrentFeedbackRequest] = useState(null);
 
-  useEffect(() => {
-    // Fetching events. Ideally, we should have two queries (Past vs Upcoming) to save bandwidth.
-    // For MVP, we fetch generally and filter client-side to avoid complex Index management for the user right now.
-    const q = query(collection(db, 'events'));
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const list = [];
-      const now = new Date();
+    const scrollY = useRef(new Animated.Value(0)).current;
 
-      snapshot.forEach(doc => {
-          const data = doc.data();
-          
-          // --- FILTER SUSPENDED EVENTS ---
-          if (data.status === 'suspended') {
-              const isOwner = data.ownerId === user.uid;
-              const isAdmin = role === 'admin';
-              if (!isOwner && !isAdmin) return;
-          }
+    // Listen for my registrations
+    useEffect(() => {
+        if (!user) return;
+        const q = collection(db, 'users', user.uid, 'participating');
+        const unsub = onSnapshot(q, (snap) => {
+            setParticipatingIds(snap.docs.map(d => d.id));
+        });
+        return unsub;
+    }, [user]);
 
-          list.push({ id: doc.id, ...data });
-      });
+    // Listen for pending feedback requests
+    useEffect(() => {
+        if (!user) return;
 
-      setEvents(list);
-      setLoading(false);
-    }, (error) => {
-        console.log("Error fetching events: ", error); 
-        setLoading(false);
+        const feedbackQuery = query(
+            collection(db, 'feedbackRequests'),
+            where('userId', '==', user.uid),
+            where('status', '==', 'pending'),
+            limit(1) // Show one at a time
+        );
+
+        const unsubscribe = onSnapshot(feedbackQuery, (snapshot) => {
+            if (!snapshot.empty) {
+                const requestDoc = snapshot.docs[0];
+                setCurrentFeedbackRequest({
+                    id: requestDoc.id,
+                    ...requestDoc.data()
+                });
+                setShowFeedbackModal(true);
+            }
+        }, (err) => console.log('Feedback Listener Error', err));
+
+        return () => unsubscribe();
+    }, [user]);
+
+    useEffect(() => {
+        if (!user) {
+            setLoading(false);
+            return;
+        }
+
+        // Fetching events. ideally separate query.
+        const q = query(collection(db, 'events'));
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const list = [];
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                if (data.status === 'suspended' && data.ownerId !== user.uid && role !== 'admin') return;
+                list.push({ id: doc.id, ...data });
+            });
+            setEvents(list);
+            setLoading(false);
+        }, (error) => { console.log("Error fetching events: ", error); setLoading(false); });
+
+        return () => unsubscribe();
+    }, [role, user]);
+
+    // Recommendation Logic (Simple: Upcoming events in future)
+    const getRecommendedEvents = () => {
+        const now = new Date();
+        // Just pick top 5 upcoming events for now as recommendation
+        return events
+            .filter(e => new Date(e.startAt) >= now)
+            .sort((a, b) => new Date(a.startAt) - new Date(b.startAt))
+            .slice(0, 5);
+    };
+
+    const getFilteredEvents = () => {
+        const now = new Date();
+        let filtered = events;
+
+        // 0. Search Query Filtering
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase();
+            filtered = filtered.filter(e =>
+                e.title?.toLowerCase().includes(query) ||
+                e.description?.toLowerCase().includes(query) ||
+                e.location?.toLowerCase().includes(query)
+            );
+        }
+
+        // 1. Strict Profile Filtering (Department & Year)
+        if (role === 'student' && userData && userData.branch && userData.year) { // Only filter if we have complete user data
+            filtered = filtered.filter(e => {
+                // Check Department
+                const targetDepts = e.target?.departments || [];
+                const userDept = userData.branch || 'Unknown';
+                // If no specific departments listed, assume Open to All
+                const deptMatch = targetDepts.length === 0 || targetDepts.includes('All') || targetDepts.includes(userDept);
+
+                // Check Year
+                const targetYears = e.target?.years || [];
+                const userYear = parseInt(userData.year || 0);
+                // If targetYears is empty/undefined, assume open to all.
+                const yearMatch = targetYears.length === 0 || targetYears.includes(userYear);
+
+                return deptMatch && yearMatch;
+            });
+        }
+
+        // 2. Tab/Category Filtering
+        if (activeFilter === 'Upcoming') {
+            const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            filtered = filtered.filter(e => new Date(e.startAt) >= yesterday);
+            // Sort: Closest upcoming first
+            filtered.sort((a, b) => new Date(a.startAt) - new Date(b.startAt));
+        } else if (activeFilter === 'Past') {
+            const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            filtered = filtered.filter(e => new Date(e.startAt) < yesterday);
+            // Sort: Most recent past first
+            filtered.sort((a, b) => new Date(b.startAt) - new Date(a.startAt));
+        } else {
+            // Category filters
+            filtered = filtered.filter(e => e.category === activeFilter);
+            // Sort: Closest upcoming first for categories too
+            filtered.sort((a, b) => new Date(a.startAt) - new Date(b.startAt));
+        }
+
+        return filtered;
+    };
+
+    const displayList = getFilteredEvents();
+
+    const StickyHeader = () => (
+        <View style={{ backgroundColor: theme.colors.background, paddingBottom: 10 }}>
+            {/* Search Bar */}
+            <View style={[styles.searchContainer, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                <Ionicons name="search" size={20} color={theme.colors.textSecondary} />
+                <TextInput
+                    style={[styles.searchInput, { color: theme.colors.text }]}
+                    placeholder="Search events, topics, location..."
+                    placeholderTextColor={theme.colors.textSecondary}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                />
+                {searchQuery.length > 0 && (
+                    <TouchableOpacity onPress={() => setSearchQuery('')}>
+                        <Ionicons name="close-circle" size={20} color={theme.colors.textSecondary} />
+                    </TouchableOpacity>
+                )}
+            </View>
+
+            <View style={styles.filterWrapper}>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.filterContent}
+                >
+                    {FILTERS.map(f => (
+                        <TouchableOpacity
+                            key={f}
+                            style={[
+                                styles.chip,
+                                { backgroundColor: activeFilter === f ? theme.colors.primary : theme.colors.surface },
+                                activeFilter === f ? theme.shadows.small : { borderWidth: 1, borderColor: theme.colors.border }
+                            ]}
+                            onPress={() => setActiveFilter(f)}
+                        >
+                            <Text style={[
+                                styles.chipText,
+                                { color: activeFilter === f ? '#fff' : theme.colors.textSecondary },
+                                activeFilter === f && { fontWeight: 'bold' }
+                            ]}>{f}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            </View>
+        </View>
+    );
+
+    const renderEvent = ({ item }) => (
+        <EventCard
+            event={item}
+            isRegistered={participatingIds.includes(item.id)}
+            onLike={() => { }}
+            onShare={async () => {
+                try {
+                    await Share.share({
+                        message: `Check out this event: ${item.title} at ${item.location}!`,
+                    });
+                } catch (e) { console.log(e); }
+            }}
+            onPress={() => navigation.navigate('EventDetail', { eventId: item.id })}
+        />
+    );
+
+    const headerTranslateY = scrollY.interpolate({
+        inputRange: [0, 100],
+        outputRange: [0, -50],
+        extrapolate: 'clamp'
     });
 
-    return () => unsubscribe();
-  }, [role, user.uid]);
+    const renderHeader = () => (
+        <Animated.View style={{ transform: [{ translateY: headerTranslateY }] }}>
+            {/* Recommendations Rail */}
+            <View style={{ marginBottom: 20 }}>
+                <Text style={{ fontSize: 18, fontWeight: 'bold', marginLeft: 20, marginBottom: 10, color: theme.colors.text }}>Recommended for You</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20 }}>
+                    {getRecommendedEvents().map(event => (
+                        <View key={event.id} style={{ width: 280, marginRight: 15 }}>
+                            <EventCard event={event} onPress={() => navigation.navigate('EventDetail', { eventId: event.id })} />
+                        </View>
+                    ))}
+                    {getRecommendedEvents().length === 0 && (
+                        <Text style={{ color: theme.colors.textSecondary, fontStyle: 'italic' }}>No recommendations yet.</Text>
+                    )}
+                </ScrollView>
+            </View>
+        </Animated.View>
+    );
 
-  const getFilteredEvents = () => {
-    const now = new Date();
-    let filtered = events;
-
-    // 1. Strict Profile Filtering (Department & Year)
-    if (role === 'student' && userData) { // Admins/Clubs see all
-         filtered = filtered.filter(e => {
-             // Check Department
-             const targetDepts = e.target?.departments || [];
-             const userDept = userData.branch || 'All'; // Fallback
-             const deptMatch = targetDepts.includes('All') || targetDepts.includes(userDept);
-             
-             // Check Year
-             const targetYears = e.target?.years || [];
-             const userYear = parseInt(userData.year || 0);
-             // If targetYears is empty/undefined, assume open to all. If present, strict check.
-             const yearMatch = targetYears.length === 0 || targetYears.includes(userYear);
-
-             return deptMatch && yearMatch;
-         });
-    }
-
-    // 2. Tab/Category Filtering
-    if (activeFilter === 'Upcoming') {
-        const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        filtered = filtered.filter(e => new Date(e.startAt) >= yesterday);
-        // Sort: Closest upcoming first
-        filtered.sort((a, b) => new Date(a.startAt) - new Date(b.startAt));
-    } else if (activeFilter === 'Past') {
-        const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        filtered = filtered.filter(e => new Date(e.startAt) < yesterday);
-        // Sort: Most recent past first
-        filtered.sort((a, b) => new Date(b.startAt) - new Date(a.startAt));
-    } else {
-        // Category filters
-        filtered = filtered.filter(e => e.category === activeFilter);
-        // Sort: Closest upcoming first for categories too
-        filtered.sort((a, b) => new Date(a.startAt) - new Date(b.startAt));
-    }
-
-    return filtered;
-  };
-
-  const displayList = getFilteredEvents();
-  
-  const StickyHeader = () => (
-      <View style={{ backgroundColor: theme.colors.background, paddingBottom: 10 }}>
-          <View style={styles.headerContainer}>
-                <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Explore Events</Text>
-          </View>
-          <View style={styles.filterWrapper}>
-            <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false} 
-                contentContainerStyle={styles.filterContent}
-            >
-                {FILTERS.map(f => (
-                    <TouchableOpacity 
-                        key={f} 
-                        style={[
-                            styles.chip, 
-                            { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-                            activeFilter === f && { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }
-                        ]}
-                        onPress={() => setActiveFilter(f)}
-                    >
-                        <Text style={[
-                            styles.chipText, 
-                            { color: theme.colors.text }, 
-                            activeFilter === f && { color: '#000', fontWeight: 'bold' } 
-                        ]}>{f}</Text>
-                    </TouchableOpacity>
-                ))}
-            </ScrollView>
-          </View>
-      </View>
-  );
-
-  const renderEvent = ({ item }) => (
-      <EventCard 
-        event={item}
-        isRegistered={participatingIds.includes(item.id)}
-        onLike={() => {}}
-        onShare={async () => {
-            try {
-                await Share.share({
-                    message: `Check out this event: ${item.title} at ${item.location}!`,
-                });
-            } catch (e) { console.log(e); }
-        }}
-      />
-  );
-
-  const headerTranslateY = scrollY.interpolate({
-      inputRange: [0, 100],
-      outputRange: [0, -50],
-      extrapolate: 'clamp'
-  });
-
-  const headerOpacity = scrollY.interpolate({
-      inputRange: [0, 80],
-      outputRange: [1, 0],
-      extrapolate: 'clamp'
-  });
-
-  const renderHeader = () => (
-      <Animated.View style={{ opacity: headerOpacity, transform: [{ translateY: headerTranslateY }] }}>
-          {headerContent}
-      </Animated.View>
-  );
-
-  return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {loading ? (
-          <ActivityIndicator size="large" color={theme.colors.primary} style={{marginTop: 50}} />
-      ) : (
-        <Animated.SectionList
-            sections={[{ data: displayList }]}
-            keyExtractor={item => item.id}
-            renderItem={renderEvent}
-            renderSectionHeader={StickyHeader}
-            ListHeaderComponent={renderHeader}
-            stickySectionHeadersEnabled={true}
-            onScroll={Animated.event(
-                [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-                { useNativeDriver: true }
+    return (
+        <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+            {loading ? (
+                <View style={{ paddingTop: 20 }}>
+                    <EventListSkeleton />
+                </View>
+            ) : (
+                <Animated.SectionList
+                    sections={[{ data: displayList }]}
+                    keyExtractor={item => item.id}
+                    renderItem={renderEvent}
+                    renderSectionHeader={StickyHeader}
+                    ListHeaderComponent={renderHeader}
+                    stickySectionHeadersEnabled={true}
+                    onScroll={Animated.event(
+                        [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+                        { useNativeDriver: true }
+                    )}
+                    contentContainerStyle={{ paddingBottom: 100 }}
+                    ListEmptyComponent={
+                        <View style={styles.emptyContainer}>
+                            <Ionicons name="search-outline" size={64} color={theme.colors.textSecondary} style={{ opacity: 0.5 }} />
+                            <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
+                                {searchQuery ? `No events found for "${searchQuery}"` : "No events found."}
+                            </Text>
+                        </View>
+                    }
+                />
             )}
-            contentContainerStyle={{ paddingBottom: 100, paddingTop: 20 }} 
-            ListEmptyComponent={<Text style={{textAlign: 'center', marginTop: 50, color: theme.colors.textSecondary}}>No events found.</Text>}
-        />
-      )}
-    </View>
-  );
+
+            {/* Feedback Modal */}
+            <FeedbackModal
+                visible={showFeedbackModal}
+                feedbackRequest={currentFeedbackRequest}
+                onClose={() => setShowFeedbackModal(false)}
+                onSubmit={async (feedbackData) => {
+                    if (!currentFeedbackRequest) return;
+                    if (submitFeedback) {
+                        await submitFeedback({
+                            feedbackRequestId: currentFeedbackRequest.id,
+                            eventId: currentFeedbackRequest.eventId,
+                            clubId: currentFeedbackRequest.clubId,
+                            userId: user.uid,
+                            ...feedbackData
+                        });
+                    }
+                }}
+            />
+        </View>
+    );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  headerContainer: {
-      paddingHorizontal: 20,
-      paddingTop: 20,
-      paddingBottom: 10,
-  },
-  welcomeText: {
-      fontSize: 14,
-      fontWeight: '600',
-      marginBottom: 4,
-  },
-  headerTitle: {
-      fontSize: 28,
-      fontWeight: '900',
-      letterSpacing: -0.5,
-  },
-  filterWrapper: {
-      height: 60,
-  },
-  filterContent: {
-      paddingHorizontal: 20, // Align with header
-      paddingVertical: 10,
-      alignItems: 'center', 
-  },
-  chip: {
-      paddingHorizontal: 16,
-      paddingVertical: 8,
-      borderRadius: 8, // Square-ish chips
-      borderWidth: 1,
-      marginRight: 8,
-      justifyContent: 'center',
-  },
-  chipText: { fontSize: 13, fontWeight: '600' },
+    container: { flex: 1 },
+    headerContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingTop: 10,
+        paddingBottom: 10,
+    },
+    searchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginHorizontal: 20,
+        marginTop: 5,
+        marginBottom: 5,
+        paddingHorizontal: 15,
+        paddingVertical: 10,
+        borderRadius: 12,
+        borderWidth: 1,
+    },
+    searchInput: {
+        flex: 1,
+        marginLeft: 10,
+        fontSize: 16,
+        borderWidth: 0,
+        ...Platform.select({
+            web: { outlineStyle: 'none' }
+        })
+    },
+    filterWrapper: {
+        height: 60,
+    },
+    filterContent: {
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        alignItems: 'center',
+    },
+    chip: {
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 30, // Pill shape
+        marginRight: 10,
+        justifyContent: 'center',
+    },
+    chipText: { fontSize: 13, fontWeight: '600' },
+    emptyContainer: { alignItems: 'center', marginTop: 50, padding: 20 },
+    emptyText: { marginTop: 10, fontSize: 16 },
 });

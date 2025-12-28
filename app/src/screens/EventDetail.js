@@ -382,6 +382,30 @@ export default function EventDetail({ route, navigation }) {
                 👥 {participantCount} people registered
             </Text>
 
+            {/* Owner / Admin Tools */}
+            {(isOwner || isAdmin) && (
+                <View style={styles.ownerPanel}>
+                    <Text style={[styles.sectionHeader, { marginBottom: 10 }]}>Manage Event</Text>
+                    <View style={styles.actionRow}>
+                        <TouchableOpacity 
+                            style={[styles.actionBtn, { backgroundColor: theme.colors.primary }]}
+                            onPress={() => navigation.navigate('AttendanceDashboard', { eventId, eventTitle: event.title })}
+                        >
+                            <Ionicons name="stats-chart" size={20} color="#fff" />
+                            <Text style={styles.actionBtnText}>Analytics</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity 
+                            style={[styles.actionBtn, { backgroundColor: theme.colors.secondary }]}
+                            onPress={() => navigation.navigate('QRScanner', { eventId, eventTitle: event.title })}
+                        >
+                            <Ionicons name="qr-code" size={20} color="#000" />
+                            <Text style={[styles.actionBtnText, { color: '#000' }]}>Scan QR</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            )}
+
             {/* Admin Controls */}
             {isAdmin && (
                 <View style={[styles.adminPanel, { backgroundColor: theme.colors.surface }]}>
@@ -619,5 +643,26 @@ const getStyles = (theme) => StyleSheet.create({
       color: '#fff',
       fontWeight: 'bold',
       fontSize: 18,
+  },
+  ownerPanel: {
+      marginBottom: 20,
+      padding: 15,
+      backgroundColor: 'rgba(0,0,0,0.03)',
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: 'rgba(0,0,0,0.1)'
+  },
+  actionBtn: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 12,
+      borderRadius: 8,
+      gap: 8,
+  },
+  actionBtnText: {
+      fontWeight: 'bold',
+      color: '#fff',
   }
 });
