@@ -19,7 +19,11 @@ node_modules/
 .env.development.local
 .env.test.local
 .env.production.local
+firebase-debug.*.log
 
+# Cloud Functions
+cloud-functions/lib/
+cloud-functions/node_modules/
 # Logs
 npm-debug.log*
 yarn-debug.log*
