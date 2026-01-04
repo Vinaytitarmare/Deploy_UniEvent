@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, increment, onSnapshot, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, ImageBackground, Linking, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, ImageBackground, Linking, Platform, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import FeedbackModal from '../components/FeedbackModal';
 import { useAuth } from '../lib/AuthContext';
 import * as CalendarService from '../lib/CalendarService';
@@ -356,43 +356,53 @@ export default function EventDetail({ route, navigation }) {
         }
     };
 
+    const sendCertificates = async () => {
+        console.log("Sending certificates...");
+        setLoading(true);
+        try {
+            const idToken = await user.getIdToken();
+            const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+            console.log("API URL:", API_URL);
+
+            const res = await fetch(`${API_URL}/api/sendCertificates`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${idToken}`
+                },
+                body: JSON.stringify({ eventId: event.id })
+            });
+
+            const data = await res.json();
+            console.log("Response:", data);
+
+            if (!res.ok) throw new Error(data.message || 'Failed to send');
+
+            Alert.alert("Success", `Certificates sending initiated for ${data.result.total} participants.`);
+        } catch (e) {
+            console.error("Certificate Send Error:", e);
+            Alert.alert("Error", e.message || "Failed to send certificates");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleSendCertificates = async () => {
-        Alert.alert(
-            "Send Certificates",
-            "Are you sure you want to email certificates to all confirmed participants?",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Send",
-                    onPress: async () => {
-                        setLoading(true);
-                        try {
-                            const idToken = await user.getIdToken();
-                            const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
-                            
-                            const res = await fetch(`${API_URL}/api/sendCertificates`, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Authorization': `Bearer ${idToken}`
-                                },
-                                body: JSON.stringify({ eventId: event.id })
-                            });
-
-                            const data = await res.json();
-                            if (!res.ok) throw new Error(data.message || 'Failed to send');
-
-                            Alert.alert("Success", `Certificates sending initiated for ${data.result.total} participants.`);
-                        } catch (e) {
-                            console.error(e);
-                            Alert.alert("Error", e.message);
-                        } finally {
-                            setLoading(false);
-                        }
-                    }
-                }
-            ]
-        );
+        console.log("Send Certificates Button Clicked");
+        if (Platform.OS === 'web') {
+            if (window.confirm("Are you sure you want to email certificates to all confirmed participants?")) {
+                sendCertificates();
+            }
+        } else {
+            Alert.alert(
+                "Send Certificates",
+                "Are you sure you want to email certificates to all confirmed participants?",
+                [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Send", onPress: sendCertificates }
+                ]
+            );
+        }
     };
 
     const handleFeedbackSubmit = async (data) => {
