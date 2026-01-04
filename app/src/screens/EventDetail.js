@@ -21,6 +21,7 @@ export default function EventDetail({ route, navigation }) {
 
     const [event, setEvent] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [sendingCertificates, setSendingCertificates] = useState(false);
     const [rsvpStatus, setRsvpStatus] = useState(null);
     const [participantCount, setParticipantCount] = useState(0);
     const [hasGivenFeedback, setHasGivenFeedback] = useState(false);
@@ -358,7 +359,7 @@ export default function EventDetail({ route, navigation }) {
 
     const sendCertificates = async () => {
         console.log("Sending certificates...");
-        setLoading(true);
+        setSendingCertificates(true);
         try {
             const idToken = await user.getIdToken();
             const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
@@ -378,12 +379,12 @@ export default function EventDetail({ route, navigation }) {
 
             if (!res.ok) throw new Error(data.message || 'Failed to send');
 
-            Alert.alert("Success", `Certificates sending initiated for ${data.result.total} participants.`);
+            Alert.alert("Success", `Certificates sent to ${data.result.total} participants.`);
         } catch (e) {
             console.error("Certificate Send Error:", e);
             Alert.alert("Error", e.message || "Failed to send certificates");
         } finally {
-            setLoading(false);
+            setSendingCertificates(false);
         }
     };
 
@@ -629,11 +630,21 @@ export default function EventDetail({ route, navigation }) {
                             </TouchableOpacity>
 
                             <TouchableOpacity
-                                style={[styles.outlinedButton, { borderColor: theme.colors.primary, marginTop: 12 }]}
+                                style={[
+                                    styles.outlinedButton, 
+                                    { borderColor: theme.colors.primary, marginTop: 12, opacity: sendingCertificates ? 0.6 : 1 }
+                                ]}
                                 onPress={handleSendCertificates}
+                                disabled={sendingCertificates}
                             >
-                                <Ionicons name="mail-outline" size={22} color={theme.colors.primary} />
-                                <Text style={[styles.outlinedButtonText, { color: theme.colors.primary }]}>Send Certificates</Text>
+                                {sendingCertificates ? (
+                                    <ActivityIndicator size="small" color={theme.colors.primary} />
+                                ) : (
+                                    <Ionicons name="mail-outline" size={22} color={theme.colors.primary} />
+                                )}
+                                <Text style={[styles.outlinedButtonText, { color: theme.colors.primary }]}>
+                                    {sendingCertificates ? "Sending Emails..." : "Send Certificates"}
+                                </Text>
                             </TouchableOpacity>
                         </View>
                     )}
