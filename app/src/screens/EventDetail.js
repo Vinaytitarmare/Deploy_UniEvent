@@ -1,16 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, increment, onSnapshot, setDoc, updateDoc, query, where } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, increment, onSnapshot, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, ImageBackground, Linking, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import ScreenWrapper from '../components/ScreenWrapper'; // Kept generic but we might bypass in render
+import FeedbackModal from '../components/FeedbackModal';
 import { useAuth } from '../lib/AuthContext';
 import * as CalendarService from '../lib/CalendarService';
-import { db } from '../lib/firebaseConfig';
-import { scheduleEventReminder, cancelScheduledNotification } from '../lib/notificationService';
 import { submitFeedback } from '../lib/feedbackService';
+import { db } from '../lib/firebaseConfig';
+import { cancelScheduledNotification, scheduleEventReminder } from '../lib/notificationService';
 import { useTheme } from '../lib/ThemeContext';
-import FeedbackModal from '../components/FeedbackModal';
 
 const { width } = Dimensions.get('window');
 
@@ -357,6 +356,45 @@ export default function EventDetail({ route, navigation }) {
         }
     };
 
+    const handleSendCertificates = async () => {
+        Alert.alert(
+            "Send Certificates",
+            "Are you sure you want to email certificates to all confirmed participants?",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Send",
+                    onPress: async () => {
+                        setLoading(true);
+                        try {
+                            const idToken = await user.getIdToken();
+                            const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+                            
+                            const res = await fetch(`${API_URL}/api/sendCertificates`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${idToken}`
+                                },
+                                body: JSON.stringify({ eventId: event.id })
+                            });
+
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.message || 'Failed to send');
+
+                            Alert.alert("Success", `Certificates sending initiated for ${data.result.total} participants.`);
+                        } catch (e) {
+                            console.error(e);
+                            Alert.alert("Error", e.message);
+                        } finally {
+                            setLoading(false);
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     const handleFeedbackSubmit = async (data) => {
         try {
             await submitFeedback({
@@ -571,12 +609,21 @@ export default function EventDetail({ route, navigation }) {
                                 <Text style={[styles.outlinedButtonText, { color: theme.colors.primary }]}>Check-In</Text>
                             </TouchableOpacity>
 
+
                             <TouchableOpacity
                                 style={[styles.outlinedButton, { borderColor: theme.colors.primary }]}
                                 onPress={() => navigation.navigate('AttendanceDashboard', { eventId: event.id, eventTitle: event.title })}
                             >
                                 <Ionicons name="bar-chart" size={22} color={theme.colors.primary} />
                                 <Text style={[styles.outlinedButtonText, { color: theme.colors.primary }]}>Analytics</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.outlinedButton, { borderColor: theme.colors.primary, marginTop: 12 }]}
+                                onPress={handleSendCertificates}
+                            >
+                                <Ionicons name="mail-outline" size={22} color={theme.colors.primary} />
+                                <Text style={[styles.outlinedButtonText, { color: theme.colors.primary }]}>Send Certificates</Text>
                             </TouchableOpacity>
                         </View>
                     )}

@@ -83,6 +83,30 @@ app.post('/api/setRole', validateFirebaseIdToken, async (req: express.Request, r
   }
 });
 
+// Send Certificates Endpoint
+import { sendCertificatesForEvent } from './certificateService';
+
+app.post('/api/sendCertificates', validateFirebaseIdToken, async (req: express.Request, res: express.Response) => {
+    const user = (req as any).user;
+    const { eventId } = req.body;
+
+    if (!user) {
+        return res.status(401).json({ error: 'unauthenticated' });
+    }
+
+    if (!eventId) {
+        return res.status(400).json({ error: 'invalid-argument', message: 'eventId is required' });
+    }
+
+    try {
+        const result = await sendCertificatesForEvent(eventId, user.uid);
+        return res.json({ result });
+    } catch (error: any) {
+        console.error("Certificate Error:", error);
+        return res.status(500).json({ error: 'internal', message: error.message });
+    }
+});
+
 // Basic Health Check
 app.get('/', (req, res) => {
   res.send('UniEvent Backend is Running');
