@@ -54,10 +54,10 @@ export async function sendCertificatesForEvent(eventId: string, ownerId: string)
             const nameWidth = font.widthOfTextAtSize(p.name, nameSize);
             firstPage.drawText(p.name, {
                 x: (width - nameWidth) / 2,
-                y: height / 2 + 40, // Adjust Y as per template
+                y: height / 2 - 20, // Lowered position
                 size: nameSize,
                 font: font,
-                color: rgb(0, 0, 0),
+                color: rgb(1, 1, 1), // White
             });
 
             // Draw Event Name
@@ -66,10 +66,10 @@ export async function sendCertificatesForEvent(eventId: string, ownerId: string)
             const eventWidth = regularFont.widthOfTextAtSize(eventName, eventNameSize);
             firstPage.drawText(eventName, {
                 x: (width - eventWidth) / 2,
-                y: height / 2 - 30, // Adjust Y as per template
+                y: height / 2 - 80, // Lowered position
                 size: eventNameSize,
                 font: regularFont,
-                color: rgb(0, 0, 0),
+                color: rgb(1, 1, 1), // White
             });
 
             const pdfBytes = await pdfDoc.save();
