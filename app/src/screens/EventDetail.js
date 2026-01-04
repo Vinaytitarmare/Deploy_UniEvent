@@ -604,48 +604,64 @@ export default function EventDetail({ route, navigation }) {
                         <View style={styles.organizerSection}>
                             <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Organizer Tools</Text>
 
-                            <TouchableOpacity
-                                style={[styles.outlinedButton, { borderColor: theme.colors.primary, marginBottom: 12 }]}
-                                onPress={() => navigation.navigate('CreateEvent', { event: event })}
-                            >
-                                <Ionicons name="create-outline" size={22} color={theme.colors.primary} />
-                                <Text style={[styles.outlinedButtonText, { color: theme.colors.primary }]}>Edit Event Details</Text>
-                            </TouchableOpacity>
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+                                <TouchableOpacity
+                                    style={[styles.compactButton, { borderColor: theme.colors.primary }]}
+                                    onPress={() => navigation.navigate('CreateEvent', { event: event })}
+                                >
+                                    <Ionicons name="create-outline" size={20} color={theme.colors.primary} />
+                                    <Text style={[styles.compactButtonText, { color: theme.colors.primary }]}>Edit</Text>
+                                </TouchableOpacity>
 
-                            <TouchableOpacity
-                                style={[styles.outlinedButton, { borderColor: theme.colors.primary, marginBottom: 12 }]}
-                                onPress={() => navigation.navigate('QRScanner', { eventId: event.id, eventTitle: event.title })}
-                            >
-                                <Ionicons name="qr-code" size={22} color={theme.colors.primary} />
-                                <Text style={[styles.outlinedButtonText, { color: theme.colors.primary }]}>Check-In</Text>
-                            </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.compactButton, { borderColor: theme.colors.primary }]}
+                                    onPress={() => navigation.navigate('QRScanner', { eventId: event.id, eventTitle: event.title })}
+                                >
+                                    <Ionicons name="qr-code" size={20} color={theme.colors.primary} />
+                                    <Text style={[styles.compactButtonText, { color: theme.colors.primary }]}>Check-In</Text>
+                                </TouchableOpacity>
 
+                                <TouchableOpacity
+                                    style={[styles.compactButton, { borderColor: theme.colors.primary }]}
+                                    onPress={() => navigation.navigate('AttendanceDashboard', { eventId: event.id, eventTitle: event.title })}
+                                >
+                                    <Ionicons name="bar-chart" size={20} color={theme.colors.primary} />
+                                    <Text style={[styles.compactButtonText, { color: theme.colors.primary }]}>Analytics</Text>
+                                </TouchableOpacity>
 
-                            <TouchableOpacity
-                                style={[styles.outlinedButton, { borderColor: theme.colors.primary }]}
-                                onPress={() => navigation.navigate('AttendanceDashboard', { eventId: event.id, eventTitle: event.title })}
-                            >
-                                <Ionicons name="bar-chart" size={22} color={theme.colors.primary} />
-                                <Text style={[styles.outlinedButtonText, { color: theme.colors.primary }]}>Analytics</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={[
-                                    styles.outlinedButton, 
-                                    { borderColor: theme.colors.primary, marginTop: 12, opacity: sendingCertificates ? 0.6 : 1 }
-                                ]}
-                                onPress={handleSendCertificates}
-                                disabled={sendingCertificates}
-                            >
-                                {sendingCertificates ? (
-                                    <ActivityIndicator size="small" color={theme.colors.primary} />
-                                ) : (
-                                    <Ionicons name="mail-outline" size={22} color={theme.colors.primary} />
-                                )}
-                                <Text style={[styles.outlinedButtonText, { color: theme.colors.primary }]}>
-                                    {sendingCertificates ? "Sending Emails..." : "Send Certificates"}
-                                </Text>
-                            </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.compactButton, 
+                                        { 
+                                            borderColor: event.certificatesSent ? theme.colors.success : theme.colors.primary,
+                                            width: '100%', // Keep this one full width or let it flow? Let's make it distinct.
+                                            marginTop: 4 
+                                            // Actually, user said 'tools ui is looking too big width', implying they want smaller buttons.
+                                            // Let's make them all share space.
+                                        },
+                                        // If sent, change style
+                                        event.certificatesSent && { backgroundColor: theme.colors.success + '10', borderColor: theme.colors.success }
+                                    ]}
+                                    onPress={event.certificatesSent ? () => Alert.alert("Sent", "Certificates have already been sent.") : handleSendCertificates}
+                                    disabled={sendingCertificates}
+                                >
+                                    {sendingCertificates ? (
+                                        <ActivityIndicator size="small" color={event.certificatesSent ? theme.colors.success : theme.colors.primary} />
+                                    ) : (
+                                        <Ionicons 
+                                            name={event.certificatesSent ? "checkmark-done-circle" : "mail-outline"} 
+                                            size={20} 
+                                            color={event.certificatesSent ? theme.colors.success : theme.colors.primary} 
+                                        />
+                                    )}
+                                    <Text style={[
+                                        styles.compactButtonText, 
+                                        { color: event.certificatesSent ? theme.colors.success : theme.colors.primary }
+                                    ]}>
+                                        {sendingCertificates ? "Sending..." : (event.certificatesSent ? "Certificates Sent" : "Send Certificates")}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     )}
 
@@ -982,6 +998,24 @@ const getStyles = (theme) => StyleSheet.create({
         fontSize: 12,
         textAlign: 'center',
         opacity: 0.7,
+    },
+
+    // Compact Buttons for Organizer Tools
+    compactButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderWidth: 1,
+        borderRadius: 12,
+        flexGrow: 1, // Allow buttons to grow to fill space
+        minWidth: '45%', // Ensure 2 per row roughly
+    },
+    compactButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
     },
 
     // Feedback Card

@@ -103,5 +103,11 @@ export async function sendCertificatesForEvent(eventId: string, ownerId: string)
         }
     }
 
+    // 5. Update Event Status
+    await admin.firestore().collection('events').doc(eventId).update({
+        certificatesSent: true,
+        certificatesSentAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
     return { total: participants.length, results };
 }
