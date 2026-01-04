@@ -115,7 +115,8 @@ app.post('/api/sendDailyDigest', validateFirebaseIdToken, async (req: express.Re
     try {
         // Optional: Check if admin
         const user = (req as any).user;
-        if (user.role !== 'admin') {
+        // Check for admin claim (boolean) or role property (string)
+        if (!user.admin && user.role !== 'admin') {
              res.status(403).json({ message: 'Unauthorized: Only admins can trigger this.' });
              return;
         }
