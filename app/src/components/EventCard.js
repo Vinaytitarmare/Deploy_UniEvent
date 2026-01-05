@@ -119,7 +119,7 @@ export default function EventCard({ event, onLike, onShare, isLiked = false, isR
                         <View style={styles.infoItem}>
                             <Ionicons name="location" size={16} color={theme.colors.textSecondary} />
                             <Text style={[styles.infoText, { color: theme.colors.textSecondary }]} numberOfLines={1}>
-                                {event.location}
+                                {event.eventMode === 'online' ? 'Online' : event.location}
                             </Text>
                         </View>
                         <View style={styles.infoItem}>
